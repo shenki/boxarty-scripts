@@ -1,0 +1,3 @@
+#!/bin/sh
+
+(cd /sys/bus/platform/drivers/i2c-gpio && echo $1 >unbind && echo $1 >bind)

@@ -1,0 +1,115 @@
+#!/bin/sh
+
+mount -t debugfs none /sys/kernel/debug/
+echo -n "file drivers/fsi/fsi-master-gpio.c +p" > /sys/kernel/debug/dynamic_debug/control
+echo -n "file drivers/fsi/fsi-core.c  +p" > /sys/kernel/debug/dynamic_debug/control
+echo -n "file drivers/fsi/fsi-scom.c  +p" > /sys/kernel/debug/dynamic_debug/control
+
+./setup-gpios
+
+
+echo 0 >/sys/class/gpio/gpio505/value
+
+sleep 1
+cat /sys/class/gpio/gpio504/value
+
+sleep 1
+
+echo 1 >/sys/class/gpio/gpio505/value
+
+sleep 5
+
+cat /sys/class/gpio/gpio504/value
+
+echo 1 >/sys/class/fsi-master/fsi0/rescan
+
+for i in 2 3 4 5 9 10 11 12 13; do
+    ./reprobe i2c-bus$i
+done
+
+alias putcfam='pdbg -b kernel -p 0 putcfam'
+alias getcfam='pdbg -b kernel -p 0 getcfam'
+
+sleep 1
+./avsbus-disable.sh
+
+#./vrm-control.sh vdna=0.9 vdnb=0.9
+i2cset -y 217 0x71 0 0 b
+i2cset -y 217 0x71 0x21 230 w
+i2cset -y 217 0x71 0 0 b
+i2cset -y 218 0x71 0 0 b
+i2cset -y 218 0x71 0x21 230 w
+i2cset -y 218 0x71 0 0 b
+
+./avsbus-enable.sh
+
+
+# Turn on the uart console in the LPC slave
+# without this we don't respond to LPC IO (UART) and FW lpc firmware
+#devmem 0xcbf0000c 32 0x10000000
+#devmem 0xcbf0000c 32 0x50004000
+#devmem 0xcbf0000c 32 0xffffffff #enable everything for now 
+# control reg 1: Turn on
+# 1) LPC firmware
+# 1) vuart1
+# 3) IPMI BT and base addr to e4
+devmem 0xcbf0000c 32 0x12000000
+
+devmem 0xcbf0000c 32 0x52e40000
+
+#clear range
+devmem 0xcbf00014 32 0x000000000 # global enable + enable io + addr = 0
+devmem 0xcbf00018 32 0x000000000 # global enable + enable io + addr = 0
+
+#setup a range for superio access
+#devmem 0xcbf00014 32 0x000000c0 # global enable + enable io + addr = 0
+#devmem 0xcbf00018 32 0x00020000 # 0x00000200 end addr
+
+
+
+# setup region
+
+
+
+# START the POWER9
+# Below putcfam are stolen from
+# https://github.com/openbmc/openpower-proc-control/blob/master/procedures/p9/start_host.cpp#L46
+# Ensure asynchronous clock mode is set
+putcfam 0x840 0x00000001
+
+# Clock mux select override
+#getcfam 0x2918
+putcfam 0x2918 0xeeeef30e
+
+# Setup FSI2PIB to report checkstop
+putcfam 0x81c 0x20000000
+
+# Enable Xstop/ATTN interrupt
+putcfam 0x100D 0x60000000
+
+# Arm it
+putcfam 0x100B 0xFFFFFFFF
+
+# SBE side 0
+putcfam 0x2808 0x00000000
+# SBE side 1
+# putcfam 0x2808 0x00004000
+
+# clear sbe start bit
+#getcfam 0x2801
+putcfam 0x2801 0x04c04000
+sleep 1
+# set sbe bit
+putcfam 0x2801 0x84c04000
+
+
+# Make Mikey sane
+./quiet-fans 1500
+
+# read the console
+#./lpc-console
+# just use screeen 
+
+#Read SBE status
+# for i in $(seq 100) ; do echo -n "$i: "; pdbg -p0 getcfam 0x2809 ;  done
+

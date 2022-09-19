@@ -1,0 +1,14 @@
+#!/bin/sh
+
+SPEED=3000
+
+if [ -n "$1" ] ; then
+    SPEED=$1
+fi
+
+echo 216-0052 >/sys/bus/i2c/drivers/max31785/unbind
+
+i2cset -y 216 0x52 0 0 b && i2cset -y 216 0x52 0x3a 0xd0 b && i2cset -y 216 0x52 0x3b $SPEED w
+i2cset -y 216 0x52 0 1 b && i2cset -y 216 0x52 0x3a 0xd0 b && i2cset -y 216 0x52 0x3b $SPEED w
+i2cset -y 216 0x52 0 2 b && i2cset -y 216 0x52 0x3a 0xd0 b && i2cset -y 216 0x52 0x3b $SPEED w
+i2cset -y 216 0x52 0 3 b && i2cset -y 216 0x52 0x3a 0xd0 b && i2cset -y 216 0x52 0x3b $SPEED w

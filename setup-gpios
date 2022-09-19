@@ -1,0 +1,16 @@
+#!/bin/sh
+
+# SOFTWARE_PGOOD
+echo 502 >/sys/class/gpio/export
+echo out >/sys/class/gpio/gpio502/direction
+echo 1 >/sys/class/gpio/gpio502/value
+
+# SYS_PWROK_BUFF
+echo 504 >/sys/class/gpio/export
+echo in >/sys/class/gpio/gpio504/direction
+cat /sys/class/gpio/gpio504/value
+
+# BMC_POWER_UP
+echo 505 >/sys/class/gpio/export
+echo out >/sys/class/gpio/gpio505/direction
+echo 0 >/sys/class/gpio/gpio505/value
